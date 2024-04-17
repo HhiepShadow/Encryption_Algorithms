@@ -235,6 +235,10 @@ public class AES_128 {
         return result;
     }
 
+    public int[][] encrypt(String M) {
+        
+    }
+
     public static void main(String[] args) {
         AES_128 aes_128 = new AES_128("021D3D04A490B5A4C91A4F85112A5B55");
 
@@ -296,6 +300,8 @@ public class AES_128 {
         //     }
         //     System.out.println();
         // }
+
+        state = aes_128.changeRowsToColumns(state);
 
         state = aes_128.addRoundKey(state, newKey);
         for (int[] st : state) {
