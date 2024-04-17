@@ -8,6 +8,7 @@ This repository contains implementations of various encryption algorithms in Jav
 - **RSA (Rivest-Shamir-Adleman)**: An asymmetric encryption algorithm commonly used for secure data transmission and digital signatures.
 - **DES (Data Encryption Standard)**: A symmetric-key algorithm for encryption of electronic data.
 - **Diffie-Hellman Key Exchange**: An algorithm for secure exchange of cryptographic keys over a public channel.
+- **DSA (Digital Signature Algorithm)**
 
 ### Classic Encryption Algorithms
 - **Caesar Cipher**: One of the earliest known substitution ciphers, where each letter in the plaintext is shifted a certain number of places down or up the alphabet.
