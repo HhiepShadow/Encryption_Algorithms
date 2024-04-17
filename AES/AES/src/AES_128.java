@@ -35,6 +35,13 @@ public class AES_128 {
             0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16
     };
 
+    private static final int[][] MIX_COLUMN_MATRIX = {
+        {0x02, 0x03, 0x01, 0x01},
+        {0x01, 0x02, 0x03, 0x01},
+        {0x01, 0x01, 0x02, 0x03},
+        {0x03, 0x01, 0x01, 0x02}
+    };
+
     public AES_128(String key) {
         this.key = key;
     }
@@ -126,32 +133,176 @@ public class AES_128 {
         return newKey;
     }
 
+    public int[][] addRoundKey(int[][] state, int[][] key) {
+        int[][] newState = new int[4][4];
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                newState[i][j] = state[i][j] ^ key[i][j];
+            }
+        }
+        return newState;
+    }
+
+    public int[][] subByte(int[][] state) {
+        for (int i = 0; i < state.length; i++) {
+            for (int j = 0; j < state[i].length; j++) {
+                state[i][j] = subByte(state[i][j]);
+            }
+        }
+        return state;
+    }
+
+    // public int[][] changeRowsToColumns(int[][] state) {
+    //     int rows = state.length;
+    //     int columns = state[0].length;
+    //     int[][] result = new int[rows][columns];
+
+    //     for (int row = 0; row < rows; row++) {
+    //         for (int column = 0; column < columns; column++) {
+    //             result[row][column] = state[column][row];
+    //         }
+    //     }
+    //     return result;
+    // }
+
+    public int[][] changeRowsToColumns(int[][] state) {
+        int rows = state.length;
+        int columns = state[0].length;
+
+        int[][] result = new int[rows][columns];
+
+        for (int row = 0; row < rows; row++) {
+            for (int column = 0; column < columns; column++) {
+                result[row][column] = state[column][row];
+            }
+        }
+
+        return result;
+    }
+
+    public int[][] shiftRows(int[][] state) {
+        int rows = state.length;
+        int columns = state[0].length;
+
+        state = changeRowsToColumns(state);
+
+        int[][] newState = new int[rows][columns];
+
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 4; col++) {
+                newState[row][col] = state[row][(col + row) % 4];
+            }
+        }
+
+        return newState;
+    }
+
+    public int[][] mixColumns(int[][] state) {
+        int[][] newState = new int[4][4];
+        for (int col = 0; col < 4; col++) {
+            newState[0][col] = multiply(0x02, state[0][col]) ^ multiply(0x03, state[1][col]) ^ state[2][col]
+                    ^ state[3][col];
+            newState[1][col] = state[0][col] ^ multiply(0x02, state[1][col]) ^ multiply(0x03, state[2][col])
+                    ^ state[3][col];
+            newState[2][col] = state[0][col] ^ state[1][col] ^ multiply(0x02, state[2][col])
+                    ^ multiply(0x03, state[3][col]);
+            newState[3][col] = multiply(0x03, state[0][col]) ^ state[1][col] ^ state[2][col]
+                    ^ multiply(0x02, state[3][col]);
+        }
+
+        return newState;
+    }
+
+    public int multiply(int a, int b) {
+        byte byteA = (byte) a;
+        byte byteB = (byte) b;
+
+        byte resultByte = 0;
+        byte carry = 0;
+        for (int i = 0; i < 8; i++) {
+            if ((byteB & 1) != 0) {
+                resultByte ^= byteA;
+            }
+            boolean byteACarry = (byteA & 0x80) != 0;
+            byteA <<= 1;
+            if (byteACarry) {
+                byteA ^= 0x1B;
+            }
+            byteB >>= 1;
+        }
+
+        int result = resultByte >= 0 ? resultByte : 256 + resultByte;
+        return result;
+    }
+
     public static void main(String[] args) {
         AES_128 aes_128 = new AES_128("021D3D04A490B5A4C91A4F85112A5B55");
 
         int[][] splitWords = aes_128.splitKeyIntoWords(aes_128.getKey());
 
         int[] rotword = aes_128.rotWord(splitWords[3]);
-        for (int r : rotword) {
-            System.out.println(r);
-        }
+        // for (int r : rotword) {
+        //     System.out.println(r);
+        // }
 
         int[] subword = aes_128.subWord(rotword);
-        for (int s : subword) {
-            System.out.println(s);
-        }
+        // for (int s : subword) {
+        //     System.out.println(s);
+        // }
 
         int[] xor = aes_128.xorRCON(subword, 0);
-        for (int x : xor) {
-            System.out.println(x);
-        }
+        // for (int x : xor) {
+        //     System.out.println(x);
+        // }
 
         int[][] newKey = aes_128.calculateNewKey(xor, splitWords);
         for (int[] key : newKey) {
             for (int k : key) {
-                System.out.println(k);
+                System.out.print(Integer.toHexString(k));
             }
         }
-        
+
+        System.out.println();
+
+        String M = "7BB88955B6E87E91095C2A880F983F46";
+        int[][] state = aes_128.splitKeyIntoWords(M);
+        state = aes_128.addRoundKey(state, aes_128.splitKeyIntoWords(aes_128.getKey()));
+        // for (int[] st : state) {
+        //     for (int s : st) {
+        //         System.out.println(s);
+        //     }
+        // }
+
+        state = aes_128.subByte(state);
+        // for (int[] st : state) {
+        //     for (int s : st) {
+        //         System.out.print(Integer.toHexString(s) + " ");
+        //     }
+        //     System.out.println();
+        // }
+
+        state = aes_128.shiftRows(state);
+        // for (int[] st : state) {
+        //     for (int s : st) {
+        //         System.out.print(Integer.toHexString(s) + " ");
+        //     }
+        //     System.out.println();
+        // }
+
+        state = aes_128.mixColumns(state);
+        // for (int[] st : state) {
+        //     for (int s : st) {
+        //         System.out.print(Integer.toHexString(s) + " ");
+        //     }
+        //     System.out.println();
+        // }
+
+        state = aes_128.addRoundKey(state, newKey);
+        for (int[] st : state) {
+            for (int s : st) {
+                System.out.print(Integer.toHexString(s) + " ");
+            }
+            System.out.println();
+        }
     }
 }
