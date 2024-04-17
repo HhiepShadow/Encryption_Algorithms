@@ -8,10 +8,12 @@ public class HillCipher {
         this.key = key;
     }
 
-    // public String encrypt(String plainText) {
-    //     List<Integer> plainTextVector = convertToVector(plainText);
+    public String encrypt(String plainText) {
+        List<Integer> plainTextVector = convertToVector(plainText);
+        List<Integer> cipherTextVector = multiplyMatrix(plainTextVector, getKeyMatrix());
 
-    // }
+        return convertToString(cipherTextVector);
+    }
 
     private List<Integer> convertToVector(String msg) {
         msg = msg.replaceAll("\\s+", "").toUpperCase();
@@ -102,7 +104,40 @@ public class HillCipher {
     private List<List<Integer>> calculateAdjugateMatrix(List<List<Integer>> matrix) {
         int n = matrix.size();
         List<List<Integer>> adjugateMatrix = new ArrayList<>();
-        
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                List<List<Integer>> subMatrix = new ArrayList<>();
+                for (int k = 0, l = 0; k < n; k++) {
+                    if (k == i) {
+                        continue;
+                    }
+                    for (int m = 0, p = 0; m < p; m++) {
+                        if (m == j) {
+                            continue;
+                        }
+                        subMatrix.get(l).set(p, matrix.get(k).get(m));
+                        p++;
+                    }
+                    l++;
+                }
+                adjugateMatrix.get(i).set(j, matrixDeterminant(subMatrix) * (int) Math.pow(-1, i + j));
+            }
+        }
+        return adjugateMatrix;
+    }
+
+    private List<List<Integer>> scalarMultiplyMatrix(List<List<Integer>> matrix, int scalar) {
+        int n = matrix.size();
+        List<List<Integer>> result = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            result.add(new ArrayList<>(n));
+        }
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                result.get(i).set(j, (matrix.get(i).get(j) * scalar) % 26) ; 
+            }
+        }
+        return result;
     }
 
     public List<List<Integer>> getKeyMatrix() {
@@ -133,12 +168,6 @@ public class HillCipher {
 
     public static void main(String[] args) {
         HillCipher hillCipher = new HillCipher("GYBNQKURP");
-        List<List<Integer>> keyMatrix = hillCipher.getKeyMatrix();
-        for (List<Integer> list : keyMatrix) {
-            for (int value : list) {
-                System.out.print(value + " ");
-            }
-            System.out.println();
-        }
+        System.out.println(hillCipher.encrypt("ACT"));
     }
 }
