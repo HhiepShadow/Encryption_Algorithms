@@ -1,6 +1,3 @@
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-
 public class AES_128 {
     private String key;
     private static final int[] RCON = {
@@ -29,17 +26,17 @@ public class AES_128 {
             0x60, 0x81, 0x4F, 0xDC, 0x22, 0x2A, 0x90, 0x88, 0x46, 0xEE, 0xB8, 0x14, 0xDE, 0x5E, 0x0B, 0xDB,
             0xE0, 0x32, 0x3A, 0x0A, 0x49, 0x06, 0x24, 0x5C, 0xC2, 0xD3, 0xAC, 0x62, 0x91, 0x95, 0xE4, 0x79,
             0xE7, 0xC8, 0x37, 0x6D, 0x8D, 0xD5, 0x4E, 0xA9, 0x6C, 0x56, 0xF4, 0xEA, 0x65, 0x7A, 0xAE, 0x08,
-            0xBA, 0x78, 0x25, 0x2E, 0x1C, 0xA6, 0xB4, 0xC6, 0xE8, 0xDD, 0x74, 0x1F, 0x48, 0xBD, 0x8B, 0x8A,
+            0xBA, 0x78, 0x25, 0x2E, 0x1C, 0xA6, 0xB4, 0xC6, 0xE8, 0xDD, 0x74, 0x1F, 0x4B, 0xBD, 0x8B, 0x8A,
             0x70, 0x3E, 0x85, 0x66, 0x48, 0x03, 0xF6, 0x0E, 0x61, 0x35, 0x57, 0x89, 0x86, 0xC1, 0x1D, 0x9E,
             0xE1, 0xF8, 0x98, 0x11, 0x69, 0xD9, 0x8E, 0x94, 0x9B, 0x1E, 0x87, 0xE9, 0xCE, 0x55, 0x28, 0xDF,
             0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16
     };
 
     private static final int[][] MIX_COLUMN_MATRIX = {
-        {0x02, 0x03, 0x01, 0x01},
-        {0x01, 0x02, 0x03, 0x01},
-        {0x01, 0x01, 0x02, 0x03},
-        {0x03, 0x01, 0x01, 0x02}
+            { 0x02, 0x03, 0x01, 0x01 },
+            { 0x01, 0x02, 0x03, 0x01 },
+            { 0x01, 0x01, 0x02, 0x03 },
+            { 0x03, 0x01, 0x01, 0x02 }
     };
 
     public AES_128(String key) {
@@ -60,13 +57,13 @@ public class AES_128 {
             int startIndex = i * wordLength;
             int endIndex = (i + 1) * wordLength;
             String word = key.substring(startIndex, endIndex);
-            //System.out.println(word);
+            // System.out.println(word);
             int wordSplitedLength = word.length() / 4;
             for (int j = 0; j < 4; j++) {
                 int start = j * wordSplitedLength;
                 int end = (j + 1) * wordSplitedLength;
                 String splitWord = word.substring(start, end);
-                
+
                 words[i][j] = Integer.parseInt(splitWord, 16);
             }
         }
@@ -133,6 +130,20 @@ public class AES_128 {
         return newKey;
     }
 
+    public int[][] calculateNewKey(int[][] keyLastRound, int nth_RCON) {
+        int[] lastWord = keyLastRound[3];
+
+        int[] rotatedWord = rotWord(lastWord);
+
+        int[] subbedWord = subWord(rotatedWord);
+
+        int[] xoredWord = xorRCON(subbedWord, nth_RCON);
+
+        int[][] newKey = calculateNewKey(xoredWord, keyLastRound);
+
+        return newKey;
+    }
+
     public int[][] addRoundKey(int[][] state, int[][] key) {
         int[][] newState = new int[4][4];
         for (int i = 0; i < 4; i++) {
@@ -151,19 +162,6 @@ public class AES_128 {
         }
         return state;
     }
-
-    // public int[][] changeRowsToColumns(int[][] state) {
-    //     int rows = state.length;
-    //     int columns = state[0].length;
-    //     int[][] result = new int[rows][columns];
-
-    //     for (int row = 0; row < rows; row++) {
-    //         for (int column = 0; column < columns; column++) {
-    //             result[row][column] = state[column][row];
-    //         }
-    //     }
-    //     return result;
-    // }
 
     public int[][] changeRowsToColumns(int[][] state) {
         int rows = state.length;
@@ -209,6 +207,7 @@ public class AES_128 {
             newState[3][col] = multiply(0x03, state[0][col]) ^ state[1][col] ^ state[2][col]
                     ^ multiply(0x02, state[3][col]);
         }
+        newState = changeRowsToColumns(newState);
 
         return newState;
     }
@@ -218,7 +217,6 @@ public class AES_128 {
         byte byteB = (byte) b;
 
         byte resultByte = 0;
-        byte carry = 0;
         for (int i = 0; i < 8; i++) {
             if ((byteB & 1) != 0) {
                 resultByte ^= byteA;
@@ -236,79 +234,49 @@ public class AES_128 {
     }
 
     public int[][] encrypt(String M) {
-        
+        int[][] state = splitKeyIntoWords(M);
+        int[][] splitedKey = splitKeyIntoWords(key);
+
+        state = addRoundKey(state, splitedKey);
+
+        int j = 0;
+        for (int i = 0; i < 9; i++) {
+            state = subByte(state);
+
+            state = shiftRows(state);
+
+            state = mixColumns(state);
+
+            splitedKey = calculateNewKey(splitedKey, j);
+            j += 4;
+
+            state = addRoundKey(state, splitedKey);
+        }
+        state = subByte(state);
+
+        state = shiftRows(state);
+        state = changeRowsToColumns(state);
+
+        int[][] finalKey = calculateNewKey(splitedKey, 36);
+
+        state = addRoundKey(state, finalKey);
+
+        return state;
     }
 
     public static void main(String[] args) {
         AES_128 aes_128 = new AES_128("021D3D04A490B5A4C91A4F85112A5B55");
 
-        int[][] splitWords = aes_128.splitKeyIntoWords(aes_128.getKey());
-
-        int[] rotword = aes_128.rotWord(splitWords[3]);
-        // for (int r : rotword) {
-        //     System.out.println(r);
-        // }
-
-        int[] subword = aes_128.subWord(rotword);
-        // for (int s : subword) {
-        //     System.out.println(s);
-        // }
-
-        int[] xor = aes_128.xorRCON(subword, 0);
-        // for (int x : xor) {
-        //     System.out.println(x);
-        // }
-
-        int[][] newKey = aes_128.calculateNewKey(xor, splitWords);
-        for (int[] key : newKey) {
-            for (int k : key) {
-                System.out.print(Integer.toHexString(k));
-            }
-        }
-
-        System.out.println();
-
         String M = "7BB88955B6E87E91095C2A880F983F46";
-        int[][] state = aes_128.splitKeyIntoWords(M);
-        state = aes_128.addRoundKey(state, aes_128.splitKeyIntoWords(aes_128.getKey()));
-        // for (int[] st : state) {
-        //     for (int s : st) {
-        //         System.out.println(s);
-        //     }
-        // }
 
-        state = aes_128.subByte(state);
-        // for (int[] st : state) {
-        //     for (int s : st) {
-        //         System.out.print(Integer.toHexString(s) + " ");
-        //     }
-        //     System.out.println();
-        // }
-
-        state = aes_128.shiftRows(state);
-        // for (int[] st : state) {
-        //     for (int s : st) {
-        //         System.out.print(Integer.toHexString(s) + " ");
-        //     }
-        //     System.out.println();
-        // }
-
-        state = aes_128.mixColumns(state);
-        // for (int[] st : state) {
-        //     for (int s : st) {
-        //         System.out.print(Integer.toHexString(s) + " ");
-        //     }
-        //     System.out.println();
-        // }
-
-        state = aes_128.changeRowsToColumns(state);
-
-        state = aes_128.addRoundKey(state, newKey);
-        for (int[] st : state) {
-            for (int s : st) {
-                System.out.print(Integer.toHexString(s) + " ");
+        int[][] C = aes_128.encrypt(M);
+        for (int[] s : C) {
+            for (int c : s) {
+                if(Integer.toHexString(c).length() == 1)
+                    System.out.print("0" + Integer.toHexString(c));
+                else
+                    System.out.print(Integer.toHexString(c));
             }
-            System.out.println();
         }
     }
 }
